@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>smoke log</title>
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Noto+Serif+JP:wght@300;400;500&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --paper: #f5efe0;
+    --paper-dark: #e8dfc8;
+    --ink: #2c2218;
+    --ink-mid: #5c4a35;
+    --ink-light: #8c7a65;
+    --ink-faint: #b8a898;
+    --red: #b83c2a;
+    --red-light: #d4604e;
+    --amber: #c17c2e;
+    --green: #3d6b4a;
+    --rule: rgba(44,34,24,0.15);
+    --shadow: rgba(44,34,24,0.12);
+  }
+
+  html, body {
+    height: 100%;
+    background: #c8b89a;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 31px, rgba(100,80,50,0.08) 31px, rgba(100,80,50,0.08) 32px);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 24px 16px 48px;
+    font-family: 'Noto Serif JP', serif;
+    min-height: 100vh;
+  }
+
+  .notebook {
+    width: 100%;
+    max-width: 420px;
+    background: var(--paper);
+    border-radius: 2px 8px 8px 2px;
+    box-shadow:
+      -6px 0 0 #a09080,
+      -10px 0 0 #b0a090,
+      0 4px 24px rgba(0,0,0,0.25),
+      0 1px 4px rgba(0,0,0,0.15);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* 左の製本部分 */
+  .notebook::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 32px;
+    background: #d4c8b0;
+    border-right: 1px solid rgba(100,80,50,0.2);
+    z-index: 1;
+  }
+
+  /* ノートの横線 */
+  .notebook-lines {
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 31px,
+      var(--rule) 31px,
+      var(--rule) 32px
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .content {
+    position: relative;
+    z-index: 2;
+    padding: 24px 24px 32px 52px;
+  }
+
+  /* ヘッダー */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .app-title {
+    font-family: 'Special Elite', monospace;
+    font-size: 22px;
+    color: var(--ink);
+    letter-spacing: 0.04em;
+  }
+
+  .app-subtitle {
+    font-family: 'Courier Prime', monospace;
+    font-size: 11px;
+    color: var(--ink-light);
+    letter-spacing: 0.08em;
+    margin-top: 2px;
+    text-transform: uppercase;
+  }
+
+  .date-badge {
+    text-align: right;
+  }
+
+  .date-main {
+    font-family: 'Courier Prime', monospace;
+    font-size: 13px;
+    color: var(--ink);
+    font-weight: 700;
+  }
+
+  .date-day {
+    font-family: 'Courier Prime', monospace;
+    font-size: 11px;
+    color: var(--ink-light);
+    letter-spacing: 0.05em;
+  }
+
+  /* カウンター */
+  .counter-section {
+    margin: 20px 0;
+  }
+
+  .counter-label {
+    font-family: 'Courier Prime', monospace;
+    font-size: 10px;
+    color: var(--ink-light);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .counter-main {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    margin-bottom: 10px;
+  }
+
+  .count-number {
+    font-family: 'Special Elite', monospace;
+    font-size: 88px;
+    color: var(--ink);
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+  }
+
+  .count-number.warn { color: var(--amber); }
+  .count-number.over { color: var(--red); }
+
+  .count-unit {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 18px;
+    color: var(--ink-mid);
+    padding-bottom: 12px;
+  }
+
+  /* バーゲージ */
+  .gauge-wrap {
+    position: relative;
+    height: 12px;
+    background: var(--paper-dark);
+    border: 1px solid var(--ink-faint);
+    border-radius: 1px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+
+  .gauge-fill {
+    height: 100%;
+    background: var(--green);
+    transition: width 0.4s cubic-bezier(.25,.8,.25,1), background 0.4s;
+    position: relative;
+  }
+
+  .gauge-fill::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px; right: 2px;
+    height: 3px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 1px;
+  }
+
+  .gauge-label {
+    font-family: 'Courier Prime', monospace;
+    font-size: 10px;
+    color: var(--ink-light);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* 目標上限設定 */
+  .limit-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .limit-row label {
+    font-family: 'Courier Prime', monospace;
+    font-size: 11px;
+    color: var(--ink-light);
+    letter-spacing: 0.06em;
+  }
+
+  .limit-input {
+    width: 48px;
+    font-family: 'Special Elite', monospace;
+    font-size: 16px;
+    color: var(--ink);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--ink-faint);
+    text-align: center;
+    padding: 2px 0;
+    outline: none;
+  }
+
+  .limit-input:focus { border-bottom-color: var(--ink); }
+
+  /* ボタン行 */
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    margin: 18px 0;
+  }
+
+  .btn-add {
+    flex: 1;
+    padding: 14px;
+    font-family: 'Special Elite', monospace;
+    font-size: 18px;
+    color: var(--paper);
+    background: var(--ink);
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: background 0.15s, transform 0.1s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-add::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0);
+    transition: background 0.1s;
+  }
+
+  .btn-add:active { transform: scale(0.98); }
+  .btn-add:hover { background: var(--ink-mid); }
+
+  .btn-sub {
+    padding: 14px 18px;
+    font-family: 'Courier Prime', monospace;
+    font-size: 20px;
+    color: var(--ink-mid);
+    background: transparent;
+    border: 1px solid var(--ink-faint);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .btn-sub:hover { background: var(--paper-dark); border-color: var(--ink-mid); }
+  .btn-sub:active { transform: scale(0.97); }
+
+  .btn-reset {
+    padding: 14px 12px;
+    font-family: 'Courier Prime', monospace;
+    font-size: 11px;
+    color: var(--ink-faint);
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: color 0.15s;
+  }
+
+  .btn-reset:hover { color: var(--red); border-color: var(--red-light); }
+
+  /* たばこビジュアル */
+  .cig-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    min-height: 32px;
+    margin-bottom: 18px;
+  }
+
+  .cig-icon {
+    width: 10px;
+    height: 28px;
+    border-radius: 2px;
+    background: linear-gradient(to bottom, #e8c87a 0%, #e8c87a 26%, #f0d4a0 26%, #f0d4a0 100%);
+    border: 0.5px solid #c8a850;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .cig-icon.smoked {
+    background: #b0a898;
+    border-color: #988878;
+    opacity: 0.5;
+  }
+
+  /* メモ */
+  .memo-section {
+    border-top: 1px dashed var(--ink-faint);
+    padding-top: 14px;
+    margin-top: 4px;
+  }
+
+  .memo-label {
+    font-family: 'Courier Prime', monospace;
+    font-size: 10px;
+    color: var(--ink-light);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .memo-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--rule);
+    font-family: 'Noto Serif JP', serif;
+    font-size: 14px;
+    color: var(--ink);
+    padding: 4px 0 8px;
+    outline: none;
+    resize: none;
+    height: 54px;
+    line-height: 1.8;
+  }
+
+  .memo-input::placeholder { color: var(--ink-faint); font-style: italic; }
+  .memo-input:focus { border-bottom-color: var(--ink-mid); }
+
+  /* グラフ */
+  .graph-section {
+    border-top: 1px dashed var(--ink-faint);
+    padding-top: 14px;
+    margin-top: 14px;
+  }
+
+  .graph-label {
+    font-family: 'Courier Prime', monospace;
+    font-size: 10px;
+    color: var(--ink-light);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .graph-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 5px;
+    height: 72px;
+  }
+
+  .bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    height: 100%;
+    justify-content: flex-end;
+  }
+
+  .bar-val {
+    font-family: 'Courier Prime', monospace;
+    font-size: 10px;
+    color: var(--ink-mid);
+  }
+
+  .bar-body {
+    width: 100%;
+    background: var(--ink-mid);
+    border-radius: 1px 1px 0 0;
+    min-height: 2px;
+    transition: height 0.5s cubic-bezier(.25,.8,.25,1);
+  }
+
+  .bar-body.today { background: var(--ink); }
+  .bar-body.empty { background: var(--paper-dark); border: 1px solid var(--rule); }
+
+  .bar-day {
+    font-family: 'Courier Prime', monospace;
+    font-size: 9px;
+    color: var(--ink-faint);
+    white-space: nowrap;
+  }
+
+  /* フッター */
+  .footer {
+    margin-top: 20px;
+    border-top: 1px solid var(--rule);
+    padding-top: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .streak-text {
+    font-family: 'Courier Prime', monospace;
+    font-size: 11px;
+    color: var(--ink-light);
+  }
+
+  .streak-num {
+    font-family: 'Special Elite', monospace;
+    font-size: 16px;
+    color: var(--ink);
+  }
+
+  /* ホールパンチ風 */
+  .punch {
+    position: absolute;
+    left: 10px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #c8b89a;
+    border: 1px solid rgba(100,80,50,0.3);
+    z-index: 3;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'Courier Prime', monospace;
+    font-size: 13px;
+    padding: 8px 20px;
+    border-radius: 2px;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 99;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+<div class="notebook">
+  <div class="notebook-lines"></div>
+
+  <!-- ホールパンチ -->
+  <div class="punch" style="top: 40px;"></div>
+  <div class="punch" style="top: 120px;"></div>
+  <div class="punch" style="top: 200px;"></div>
+  <div class="punch" style="top: 280px;"></div>
+  <div class="punch" style="top: 360px;"></div>
+  <div class="punch" style="top: 440px;"></div>
+  <div class="punch" style="top: 520px;"></div>
+  <div class="punch" style="top: 600px;"></div>
+
+  <div class="content">
+    <!-- ヘッダー -->
+    <div class="header">
+      <div>
+        <div class="app-title">smoke log</div>
+        <div class="app-subtitle">daily cigarette record</div>
+      </div>
+      <div class="date-badge">
+        <div class="date-main" id="date-main">—</div>
+        <div class="date-day" id="date-day">—</div>
+      </div>
+    </div>
+
+    <!-- カウンター -->
+    <div class="counter-section">
+      <div class="counter-label">今日の本数</div>
+      <div class="counter-main">
+        <div class="count-number" id="count-num">0</div>
+        <div class="count-unit">本</div>
+      </div>
+
+      <div class="gauge-wrap">
+        <div class="gauge-fill" id="gauge" style="width:0%;"></div>
+      </div>
+      <div class="gauge-label">
+        <span id="gauge-left">—</span>
+        <span id="gauge-right">—</span>
+      </div>
+
+      <div class="limit-row">
+        <label for="limit-in">目標上限</label>
+        <input type="number" id="limit-in" class="limit-input" value="10" min="1" max="60">
+        <label for="limit-in" style="font-family:'Courier Prime',monospace;font-size:11px;color:var(--ink-light);">本</label>
+      </div>
+    </div>
+
+    <!-- たばこアイコン -->
+    <div class="cig-grid" id="cig-grid"></div>
+
+    <!-- ボタン -->
+    <div class="btn-row">
+      <button class="btn-sub" onclick="adjust(-1)" title="1本戻す">−</button>
+      <button class="btn-add" onclick="adjust(1)">+ 1本</button>
+      <button class="btn-reset" onclick="resetToday()">今日<br>リセット</button>
+    </div>
+
+    <!-- メモ -->
+    <div class="memo-section">
+      <div class="memo-label">今日のひとこと</div>
+      <textarea class="memo-input" id="memo-input" placeholder="気分、体調、きっかけ…" rows="2"></textarea>
+    </div>
+
+    <!-- グラフ -->
+    <div class="graph-section">
+      <div class="graph-label">直近7日間</div>
+      <div class="graph-bars" id="graph-bars"></div>
+    </div>
+
+    <!-- フッター -->
+    <div class="footer">
+      <div class="streak-text">連続記録日</div>
+      <div class="streak-num" id="streak">— 日</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'smoke_log_v1';
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function loadData() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
+}
+
+function saveData(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function getToday(data) {
+  const t = todayStr();
+  if (!data[t]) data[t] = { count: 0, memo: '', limit: 10 };
+  return data[t];
+}
+
+function getLast7(data) {
+  const result = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const label = i === 0 ? '今日' : `${d.getMonth()+1}/${d.getDate()}`;
+    result.push({ key, label, isToday: i === 0, count: data[key]?.count || 0 });
+  }
+  return result;
+}
+
+function render() {
+  const data = loadData();
+  const today = getToday(data);
+  const limit = parseInt(document.getElementById('limit-in').value) || 10;
+  today.limit = limit;
+  saveData(data);
+
+  // 日付
+  const now = new Date();
+  const days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  document.getElementById('date-main').textContent =
+    `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+  document.getElementById('date-day').textContent = days[now.getDay()];
+
+  // カウント表示
+  const el = document.getElementById('count-num');
+  el.textContent = today.count;
+  const ratio = today.count / limit;
+  el.className = 'count-number' + (ratio >= 1 ? ' over' : ratio >= 0.75 ? ' warn' : '');
+
+  // ゲージ
+  const gauge = document.getElementById('gauge');
+  const pct = Math.min(ratio * 100, 100);
+  gauge.style.width = pct + '%';
+  gauge.style.background = ratio >= 1 ? '#b83c2a' : ratio >= 0.75 ? '#c17c2e' : '#3d6b4a';
+
+  document.getElementById('gauge-left').textContent =
+    ratio >= 1 ? `上限を${today.count - limit}本オーバー` : `あと${limit - today.count}本`;
+  document.getElementById('gauge-right').textContent = `上限 ${limit}本`;
+
+  // たばこアイコン
+  const grid = document.getElementById('cig-grid');
+  grid.innerHTML = '';
+  const max = Math.max(today.count, limit);
+  const show = Math.min(max, 40);
+  for (let i = 0; i < show; i++) {
+    const d = document.createElement('div');
+    d.className = 'cig-icon' + (i >= today.count ? ' smoked' : '');
+    grid.appendChild(d);
+  }
+  if (max > 40) {
+    const sp = document.createElement('span');
+    sp.style.cssText = 'font-family:Courier Prime,monospace;font-size:11px;color:var(--ink-light);align-self:center;';
+    sp.textContent = `+${max - 40}`;
+    grid.appendChild(sp);
+  }
+
+  // メモ
+  const memoEl = document.getElementById('memo-input');
+  if (document.activeElement !== memoEl) memoEl.value = today.memo || '';
+
+  // グラフ
+  const history = getLast7(data);
+  const maxCount = Math.max(...history.map(h => h.count), 1, limit);
+  const container = document.getElementById('graph-bars');
+  container.innerHTML = '';
+  history.forEach(h => {
+    const col = document.createElement('div');
+    col.className = 'bar-col';
+    const val = document.createElement('div');
+    val.className = 'bar-val';
+    val.textContent = h.count > 0 ? h.count : '';
+    const body = document.createElement('div');
+    const heightPct = (h.count / maxCount) * 58;
+    body.className = 'bar-body' + (h.isToday ? ' today' : '') + (h.count === 0 ? ' empty' : '');
+    body.style.height = (h.count === 0 ? 4 : Math.max(4, heightPct)) + 'px';
+    const day = document.createElement('div');
+    day.className = 'bar-day';
+    day.textContent = h.label;
+    col.appendChild(val);
+    col.appendChild(body);
+    col.appendChild(day);
+    container.appendChild(col);
+  });
+
+  // 連続記録日数
+  let streak = 0;
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (data[k] && (data[k].count > 0 || data[k].memo)) streak++;
+    else if (i > 0) break;
+  }
+  document.getElementById('streak').textContent = streak + ' 日';
+}
+
+function adjust(delta) {
+  const data = loadData();
+  const today = getToday(data);
+  today.count = Math.max(0, today.count + delta);
+  saveData(data);
+  render();
+  if (delta > 0 && today.count === parseInt(document.getElementById('limit-in').value)) {
+    showToast('上限に達した');
+  }
+}
+
+function resetToday() {
+  if (!confirm('今日の記録をリセットする？')) return;
+  const data = loadData();
+  const t = todayStr();
+  if (data[t]) { data[t].count = 0; saveData(data); }
+  render();
+  showToast('リセットした');
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// メモ保存
+document.addEventListener('DOMContentLoaded', () => {
+  render();
+  document.getElementById('memo-input').addEventListener('input', function() {
+    const data = loadData();
+    getToday(data).memo = this.value;
+    saveData(data);
+  });
+  document.getElementById('limit-in').addEventListener('change', render);
+
+  // 日付またぎ自動チェック
+  let lastDate = todayStr();
+  setInterval(() => {
+    const now = todayStr();
+    if (now !== lastDate) { lastDate = now; render(); showToast('日付が変わった — 新しい1日'); }
+  }, 30000);
+});
+</script>
+</body>
+</html>
